@@ -13,7 +13,7 @@ export class UsuariosService {
     const nombre = data.get ? data.get('nombre') : data.nombre;
     const apellido = data.get ? data.get('apellido') : data.apellido;
     const correo = data.get ? data.get('correo') : data.correo;
-    const username = data.get ? data.get('usuario') : data.usuario; // importante mapear
+    const username = data.get ? data.get('usuario') : data.usuario; 
     const password = data.get ? data.get('contrasena') : data.contrasena;
     const fechaNacimiento = data.get ? data.get('fechaNacimiento') : data.fechaNacimiento;
     const descripcion = data.get ? data.get('descripcion') : data.descripcion;
