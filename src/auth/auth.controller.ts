@@ -6,49 +6,49 @@ import { CloudinaryService } from '../config/cloudinary.service';
 
 @Controller('auth') 
 export class AuthController {
-  constructor(
+  constructor(
     private readonly authService: AuthService,
     private readonly cloudinaryService: CloudinaryService 
 ) {}
 
-  @Post('registro')
-  @UseInterceptors(FileInterceptor('imagenPerfil', {
+  @Post('registro')
+  @UseInterceptors(FileInterceptor('imagenPerfil', {
     storage: memoryStorage(), 
-  }))
-  async registro(@Body() body: any, @UploadedFile() file: Express.Multer.File) {
-    try {
+  }))
+  async registro(@Body() body: any, @UploadedFile() file: Express.Multer.File) {
+     try {
         let imageUrl: string | null = null;
         
-        if (file) {
-            const uploadResult = await this.cloudinaryService.uploadImage(file);
+          if (file) {
+              const uploadResult = await this.cloudinaryService.uploadImage(file);
             imageUrl = uploadResult.secure_url;
-            body.imagenPerfil = imageUrl; 
-        } else {
+              body.imagenPerfil = imageUrl; 
+          } else {
              body.imagenPerfil = null; 
         }
 
-      
-      return await this.authService.register(body);
+        
+        return await this.authService.register(body);
 
-    } catch (error) {
-      console.error('Error durante el registro o subida a Cloudinary:', error);
-      throw new BadRequestException(`Error al registrar usuario: ${error.message}`);
-    }
-  }
+      } catch (error) {
+        console.error('Error durante el registro o subida a Cloudinary:', error);
+        throw new BadRequestException(`Error al registrar usuario: ${error.message}`);
+      }
+   }
 
-  @Post('login')
-  async login(@Body() body: any) {
-    const correoOrUsername = body.correoOrUsername;
-    const password = body.password || body.contrasena;
+   @Post('login')
+   async login(@Body() body: any) {
+      const correoOrUsername = body.correoOrUsername;
+      const password = body.password || body.contrasena;
 
-    if (!correoOrUsername || !password) {
-      throw new BadRequestException('Faltan campos obligatorios');
-    }
+   if (!correoOrUsername || !password) {
+        throw new BadRequestException('Faltan campos obligatorios');
+      }
 
-    try {
-      return await this.authService.login(correoOrUsername, password);
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
-  }
+      try {
+        return await this.authService.login(correoOrUsername, password);
+      } catch (error) {
+        throw new BadRequestException(error.message);
+      }
+   }
 }
