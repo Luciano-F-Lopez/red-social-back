@@ -12,17 +12,17 @@ export class AuthController {
 ) {}
 
   @Post('registro')
-  @UseInterceptors(FileInterceptor('imagenPerfil', {
-    storage: memoryStorage(), 
+  @UseInterceptors(FileInterceptor('imagenPerfil', { // Esperar un archivo en el campo imagenPerfil del formulario
+    storage: memoryStorage(),  
   }))
   async registro(@Body() body: any, @UploadedFile() file: Express.Multer.File) {
      try {
         let imageUrl: string | null = null;
         
           if (file) {
-              const uploadResult = await this.cloudinaryService.uploadImage(file);
-            imageUrl = uploadResult.secure_url;
-              body.imagenPerfil = imageUrl; 
+              const uploadResult = await this.cloudinaryService.uploadImage(file); // llama a cloudinaryService para subir la imagen a la nube
+            imageUrl = uploadResult.secure_url; // la secure_url que devuelve Cloudinary y la asigna al objeto body
+              body.imagenPerfil = imageUrl;   // guarda la url en la bd
           } else {
              body.imagenPerfil = null; 
         }

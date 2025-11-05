@@ -16,8 +16,8 @@ export class AuthService {
     try {
       const nuevoUsuario = await this.usuariosService.crearUsuario(userData);
 
-      const { password: _, ...result } = nuevoUsuario.toObject();
-      return result;
+      const { password: _, ...result } = nuevoUsuario.toObject(); //extrae la propiedad password y la descarta
+      return result; //asigna el resto de las propiedades a la variable result
     } catch (error) {
       throw new BadRequestException(error.message);
     }
@@ -30,7 +30,7 @@ export class AuthService {
       throw new BadRequestException('Credenciales incorrectas'); 
     }
 
-    const match = await bcrypt.compare(password, usuario.password);
+    const match = await bcrypt.compare(password, usuario.password); //Compara la password que el usuario ingresó con el hash almacenado en la base de datos
     
     if (!match) {
       throw new BadRequestException('Contraseña incorrecta');

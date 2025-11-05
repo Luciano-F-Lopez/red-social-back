@@ -27,21 +27,21 @@ export class UsuariosService {
     }
 
     // Validar unicidad
-    const [correoExistente, usernameExistente] = await Promise.all([
+    const [correoExistente, usernameExistente] = await Promise.all([ 
       this.usuarioModel.findOne({ correo }),
       this.usuarioModel.findOne({ username }),
     ]);
 
     if (correoExistente) {
-      throw new BadRequestException('El correo ya está registrado');
+      throw new BadRequestException('El correo ya está registrado'); // Si alguno existe, lanza una excepción, impidiendo el registro.
     }
     if (usernameExistente) {
-      throw new BadRequestException('El nombre de usuario ya está registrado');
+      throw new BadRequestException('El nombre de usuario ya está registrado'); // Si alguno existe, lanza una excepción, impidiendo el registro.
     }
 
     // Encriptar contraseña
-    const salt = await bcrypt.genSalt();
-    const hash = await bcrypt.hash(password, salt);
+    const salt = await bcrypt.genSalt();  // Crea una cadena aleatoria de datos
+    const hash = await bcrypt.hash(password, salt); // Cifra la contraseña mezclada
 
     // Crear y guardar
     const nuevoUsuario = new this.usuarioModel({
