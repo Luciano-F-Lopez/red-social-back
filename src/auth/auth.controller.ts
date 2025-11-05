@@ -1,48 +1,54 @@
 import { Controller, Post, Body, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { memoryStorage } from 'multer'; 
 import { AuthService } from './auth.service';
+import { CloudinaryService } from '../config/cloudinary.service'; 
 
 @Controller('auth') 
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly cloudinaryService: CloudinaryService 
+) {}
 
-  @Post('registro')
-  @UseInterceptors(FileInterceptor('imagenPerfil', {
-    storage: diskStorage({
-      destination: './uploads',
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        const ext = extname(file.originalname);
-        cb(null, `perfil-${uniqueSuffix}${ext}`);
-      }
-    })
-  }))
-  async registro(@Body() body: any, @UploadedFile() file: any) {
-    try {
-      if (file) {
-        body.imagenPerfil = `uploads/${file.filename}`; 
-      }
-      return await this.authService.register(body);
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
-  }
+  @Post('registro')
+  @UseInterceptors(FileInterceptor('imagenPerfil', {
+    storage: memoryStorage(), 
+  }))
+  async registro(@Body() body: any, @UploadedFile() file: Express.Multer.File) {
+    try {
+        let imageUrl: string | null = null;
+        
+        if (file) {
+            const uploadResult = await this.cloudinaryService.uploadImage(file);
+            imageUrl = uploadResult.secure_url;
+            body.imagenPerfil = imageUrl; 
+        } else {
+             body.imagenPerfil = null; 
+        }
 
-  @Post('login')
-  async login(@Body() body: any) {
-    const correoOrUsername = body.correoOrUsername;
-    const password = body.password || body.contrasena;
+      
+      return await this.authService.register(body);
 
-    if (!correoOrUsername || !password) {
-      throw new BadRequestException('Faltan campos obligatorios');
-    }
+    } catch (error) {
+      console.error('Error durante el registro o subida a Cloudinary:', error);
+      throw new BadRequestException(`Error al registrar usuario: ${error.message}`);
+    }
+  }
 
-    try {
-      return await this.authService.login(correoOrUsername, password);
-    } catch (error) {
-      throw new BadRequestException(error.message);
-    }
-  }
+  @Post('login')
+  async login(@Body() body: any) {
+    const correoOrUsername = body.correoOrUsername;
+    const password = body.password || body.contrasena;
+
+    if (!correoOrUsername || !password) {
+      throw new BadRequestException('Faltan campos obligatorios');
+    }
+
+    try {
+      return await this.authService.login(correoOrUsername, password);
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
 }

@@ -49,7 +49,7 @@ export class UsuariosService {
       apellido,
       correo,
       username,
-      password: hash, // Contraseña encriptada
+      password: hash, 
       fechaNacimiento,
       descripcion,
       imagenPerfil,
@@ -59,7 +59,7 @@ export class UsuariosService {
     return nuevoUsuario.save();
   }
 
-  // 🆕 Método simple de búsqueda para ser usado por AuthService
+
   async buscarUsuarioParaLogin(correoOrUsername: string): Promise<Usuario | null> {
     return this.usuarioModel.findOne({
       $or: [{ correo: correoOrUsername }, { username: correoOrUsername }],
@@ -75,6 +75,5 @@ export class UsuariosService {
     return this.usuarioModel.find();
   }
   
-  // ❌ ¡MÉTODO LOGIN ELIMINADO! La lógica pasa a AuthService.
 }
 
