@@ -1,10 +1,10 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { CloudinaryService } from '../config/cloudinary.service';
+import { CloudinaryService } from '../config/cloudinary.service'; 
 import { Publicacion } from './schemas/publicacion.schema';
-import { Like } from './schemas/like.schema';
-import { Usuario } from '../usuarios/schemas/usuario.schema';
+import { Like } from './schemas/like.schema'; 
+import { Usuario } from '../usuarios/schemas/usuario.schema'; 
 
 @Injectable()
 export class PublicacionesService {
@@ -12,15 +12,15 @@ export class PublicacionesService {
         @InjectModel(Publicacion.name) private publicacionModel: Model<Publicacion>,
         @InjectModel(Like.name) private likeModel: Model<Like>,
         @InjectModel(Usuario.name) private usuarioModel: Model<Usuario>,
-        private readonly cloudinaryService: CloudinaryService,
+        private readonly cloudinaryService: CloudinaryService, 
     ) {}
 
     // 1. CREAR PUBLICACIÓN
     async crearPublicacion(
-        titulo: string,
-        descripcion: string,
-        autorId: string,
-        file?: Express.Multer.File
+        titulo: string, 
+        descripcion: string, 
+        autorId: string, 
+        file?: Express.Multer.File 
     ): Promise<Publicacion> {
         if (!titulo || !autorId) {
             throw new BadRequestException('Título y autor son obligatorios.');
@@ -40,7 +40,7 @@ export class PublicacionesService {
             titulo,
             descripcion,
             autor: new Types.ObjectId(autorId),
-            urlImagen,
+            urlImagen, 
         });
 
         return nuevaPublicacion.save();
@@ -55,13 +55,7 @@ export class PublicacionesService {
     ): Promise<{ publicaciones: any[], total: number }> {
 
         const sortCriteria: any =
-<<<<<<< HEAD
             orderBy === 'likes' ? { cantidadLikes: -1 } : { createdAt: -1 };
-=======
-            orderBy === 'likes'
-                ? { cantidadLikes: -1 }
-                : { createdAt: -1 };
->>>>>>> 29a7e5de283e851bc5367efdc3c420afbfcdd7df
 
         const filter: any = { borradoLogico: false };
         if (usuarioId) filter.autor = new Types.ObjectId(usuarioId);
@@ -72,20 +66,12 @@ export class PublicacionesService {
                 .sort(sortCriteria)
                 .skip(offset)
                 .limit(limit)
-<<<<<<< HEAD
                 .populate('autor', 'username nombre fotoPerfil') 
-=======
-                .populate('autor', 'username imagenPerfil') 
->>>>>>> 29a7e5de283e851bc5367efdc3c420afbfcdd7df
                 .lean(),
             this.publicacionModel.countDocuments(filter),
         ]);
 
-<<<<<<< HEAD
         // Traer los likes de cada publicación
-=======
-        // Traer los likes asociados
->>>>>>> 29a7e5de283e851bc5367efdc3c420afbfcdd7df
         const pubIds = publicaciones.map(p => p._id);
         const likes = await this.likeModel
             .find({ publicacion: { $in: pubIds } })
@@ -108,11 +94,7 @@ export class PublicacionesService {
         return { publicaciones: publicacionesConLikes, total };
     }
 
-<<<<<<< HEAD
     // 3. ELIMINACIÓN LÓGICA
-=======
-    // 3. ELIMINAR PUBLICACIÓN (baja lógica)
->>>>>>> 29a7e5de283e851bc5367efdc3c420afbfcdd7df
     async eliminarPublicacion(publicacionId: string, usuarioPeticionId: string): Promise<Publicacion> {
         const publicacion = await this.publicacionModel.findById(publicacionId).exec();
 
@@ -144,7 +126,6 @@ export class PublicacionesService {
                 await this.likeModel.deleteOne({ publicacion: publicacionObjId, usuario: autorObjId }).exec();
                 throw new NotFoundException('Publicación no encontrada.');
             }
-<<<<<<< HEAD
 
             return { mensaje: 'Me Gusta añadido.', cantidadLikes: publicacionActualizada.cantidadLikes };
         } catch (error) {
@@ -156,17 +137,6 @@ export class PublicacionesService {
                 return { 
                     mensaje: 'Me Gusta ya existente, acción ignorada.', 
                     cantidadLikes
-=======
-
-            return { mensaje: 'Me Gusta añadido.', cantidadLikes: publicacionActualizada.cantidadLikes };
-        } catch (error) {
-            if (error.code === 11000) {
-                console.warn(`Usuario ${autorId} intentó dar like a ${publicacionId} que ya tenía.`);
-                return {
-                    mensaje: 'Me Gusta ya existente, acción ignorada.',
-                    cantidadLikes: await this.publicacionModel.findById(publicacionId)
-                        .select('cantidadLikes').exec().then(p => p?.cantidadLikes || 0)
->>>>>>> 29a7e5de283e851bc5367efdc3c420afbfcdd7df
                 };
             }
             throw error;
