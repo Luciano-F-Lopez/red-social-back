@@ -48,33 +48,54 @@ export class PublicacionesService {
     
     // 2. OBTENER PUBLICACIONES (GET) - Paginación, Ordenamiento y Filtro
     async obtenerPublicaciones(
-      limit: number = 10, offset: number = 0,
-      orderBy: 'fecha' | 'likes' = 'fecha', usuarioId?: string
-    ): Promise<{ publicaciones: Publicacion[], total: number }> {
-    
-    // 💡 SOLUCIÓN: Definir sortCriteria directamente con el tipo correcto
-    const sortCriteria: { [key: string]: 1 | -1 | 'asc' | 'desc' } = 
-        orderBy === 'likes' 
-            ? { cantidadLikes: 'desc' } 
-            : { createdAt: 'desc' };
+        limit: number = 10, 
+        offset: number = 0,
+        orderBy: 'fecha' | 'likes' = 'fecha', 
+        usuarioId?: string
+        ): Promise<{ publicaciones: any[], total: number }> {
 
-    const filter: any = { borradoLogico: false };
+        const sortCriteria: any = 
+            orderBy === 'likes'
+            ? { cantidadLikes: -1 }
+            : { createdAt: -1 };
 
-    if (usuarioId) {
-        filter.autor = new Types.ObjectId(usuarioId);
-    }
+        const filter: any = { borradoLogico: false };
+        if (usuarioId) filter.autor = new Types.ObjectId(usuarioId);
 
-    const [publicaciones, total] = await Promise.all([
-        this.publicacionModel
+        const [publicaciones, total] = await Promise.all([
+            this.publicacionModel
             .find(filter)
-            .sort(sortCriteria) // <--- Ya no debería marcar error
-            .skip(offset).limit(limit)
-            .populate('autor', 'nombre fotoPerfil').exec(),
-        this.publicacionModel.countDocuments(filter).exec(),
-    ]);
-    
-    return { publicaciones, total };
-}
+            .sort(sortCriteria)
+            .skip(offset)
+            .limit(limit)
+            .populate('autor', 'nombre fotoPerfil') 
+            .lean(), 
+            this.publicacionModel.countDocuments(filter),
+        ]);
+
+        // Traer los likes asociados desde la colección Like
+        const pubIds = publicaciones.map(p => p._id);
+        const likes = await this.likeModel
+            .find({ publicacion: { $in: pubIds } })
+            .select('usuario publicacion')
+            .lean();
+
+        // Vincular los likes a sus publicaciones
+        const likesMap: Record<string, string[]> = {};
+        for (const l of likes) {
+            const pubId = l.publicacion.toString();
+            const userId = l.usuario.toString();
+            if (!likesMap[pubId]) likesMap[pubId] = [];
+            likesMap[pubId].push(userId);
+        }
+
+        const publicacionesConLikes = publicaciones.map(pub => ({
+            ...pub,
+            likes: likesMap[pub._id.toString()] || [], // nuevo campo con IDs de usuarios
+        }));
+
+        return { publicaciones: publicacionesConLikes, total };
+        }
     
     // 3. BAJA LÓGICA (DELETE)
     async eliminarPublicacion(publicacionId: string, usuarioPeticionId: string): Promise<Publicacion> {

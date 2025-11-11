@@ -74,6 +74,11 @@ export class UsuariosService {
   async obtenerUsuarios(): Promise<Usuario[]> {
     return this.usuarioModel.find();
   }
+
+  async obtenerUsuarioPorId(id: string): Promise<Usuario | null> {
+  return this.usuarioModel.findById(id).exec();
+}
+
   
 }
 
