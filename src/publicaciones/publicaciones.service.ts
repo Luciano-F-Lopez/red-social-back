@@ -68,7 +68,7 @@ export class PublicacionesService {
                 .sort(sortCriteria)
                 .skip(offset)
                 .limit(limit)
-                .populate('autor', 'username imagenPerfil') // 👈 Trae username e imagenPerfil
+                .populate('autor', 'username imagenPerfil') 
                 .lean(),
             this.publicacionModel.countDocuments(filter),
         ]);
