@@ -1,10 +1,10 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { CloudinaryService } from '../config/cloudinary.service'; 
+import { CloudinaryService } from '../config/cloudinary.service';
 import { Publicacion } from './schemas/publicacion.schema';
-import { Like } from './schemas/like.schema'; 
-import { Usuario } from '../usuarios/schemas/usuario.schema'; 
+import { Like } from './schemas/like.schema';
+import { Usuario } from '../usuarios/schemas/usuario.schema';
 
 @Injectable()
 export class PublicacionesService {
@@ -12,25 +12,25 @@ export class PublicacionesService {
         @InjectModel(Publicacion.name) private publicacionModel: Model<Publicacion>,
         @InjectModel(Like.name) private likeModel: Model<Like>,
         @InjectModel(Usuario.name) private usuarioModel: Model<Usuario>,
-        private readonly cloudinaryService: CloudinaryService, 
+        private readonly cloudinaryService: CloudinaryService,
     ) {}
-    
-    // 1. CREAR PUBLICACIÓN (POST)
+
+    // 1. CREAR PUBLICACIÓN
     async crearPublicacion(
-        titulo: string, 
-        descripcion: string, 
-        autorId: string, 
-        file?: Express.Multer.File 
+        titulo: string,
+        descripcion: string,
+        autorId: string,
+        file?: Express.Multer.File
     ): Promise<Publicacion> {
         if (!titulo || !autorId) {
-             throw new BadRequestException('Título y autor son obligatorios.');
+            throw new BadRequestException('Título y autor son obligatorios.');
         }
 
         let urlImagen: string | undefined;
         if (file) {
             try {
                 const uploadResult = await this.cloudinaryService.uploadImage(file);
-                urlImagen = uploadResult.secure_url; 
+                urlImagen = uploadResult.secure_url;
             } catch (error) {
                 throw new BadRequestException(`Error al subir la imagen: ${error.message}`);
             }
@@ -40,47 +40,46 @@ export class PublicacionesService {
             titulo,
             descripcion,
             autor: new Types.ObjectId(autorId),
-            urlImagen, 
+            urlImagen,
         });
 
         return nuevaPublicacion.save();
     }
-    
-    // 2. OBTENER PUBLICACIONES (GET) - Paginación, Ordenamiento y Filtro
-    async obtenerPublicaciones(
-        limit: number = 10, 
-        offset: number = 0,
-        orderBy: 'fecha' | 'likes' = 'fecha', 
-        usuarioId?: string
-        ): Promise<{ publicaciones: any[], total: number }> {
 
-        const sortCriteria: any = 
+    // 2. OBTENER PUBLICACIONES
+    async obtenerPublicaciones(
+        limit: number = 10,
+        offset: number = 0,
+        orderBy: 'fecha' | 'likes' = 'fecha',
+        usuarioId?: string
+    ): Promise<{ publicaciones: any[], total: number }> {
+
+        const sortCriteria: any =
             orderBy === 'likes'
-            ? { cantidadLikes: -1 }
-            : { createdAt: -1 };
+                ? { cantidadLikes: -1 }
+                : { createdAt: -1 };
 
         const filter: any = { borradoLogico: false };
         if (usuarioId) filter.autor = new Types.ObjectId(usuarioId);
 
         const [publicaciones, total] = await Promise.all([
             this.publicacionModel
-            .find(filter)
-            .sort(sortCriteria)
-            .skip(offset)
-            .limit(limit)
-            .populate('autor', 'nombre fotoPerfil') 
-            .lean(), 
+                .find(filter)
+                .sort(sortCriteria)
+                .skip(offset)
+                .limit(limit)
+                .populate('autor', 'username imagenPerfil') // 👈 Trae username e imagenPerfil
+                .lean(),
             this.publicacionModel.countDocuments(filter),
         ]);
 
-        // Traer los likes asociados desde la colección Like
+        // Traer los likes asociados
         const pubIds = publicaciones.map(p => p._id);
         const likes = await this.likeModel
             .find({ publicacion: { $in: pubIds } })
             .select('usuario publicacion')
             .lean();
 
-        // Vincular los likes a sus publicaciones
         const likesMap: Record<string, string[]> = {};
         for (const l of likes) {
             const pubId = l.publicacion.toString();
@@ -91,16 +90,16 @@ export class PublicacionesService {
 
         const publicacionesConLikes = publicaciones.map(pub => ({
             ...pub,
-            likes: likesMap[pub._id.toString()] || [], // nuevo campo con IDs de usuarios
+            likes: likesMap[pub._id.toString()] || [],
         }));
 
         return { publicaciones: publicacionesConLikes, total };
-        }
-    
-    // 3. BAJA LÓGICA (DELETE)
+    }
+
+    // 3. ELIMINAR PUBLICACIÓN (baja lógica)
     async eliminarPublicacion(publicacionId: string, usuarioPeticionId: string): Promise<Publicacion> {
         const publicacion = await this.publicacionModel.findById(publicacionId).exec();
-        
+
         if (!publicacion || publicacion.borradoLogico) {
             throw new NotFoundException('Publicación no encontrada.');
         }
@@ -113,55 +112,58 @@ export class PublicacionesService {
         return publicacion.save();
     }
 
-    async darMeGusta(publicacionId: string, autorId: string): Promise<any> {
-        const publicacionObjId = new Types.ObjectId(publicacionId);
-        const autorObjId = new Types.ObjectId(autorId);
+    // 4. DAR ME GUSTA
+    async darMeGusta(publicacionId: string, autorId: string): Promise<any> {
+        const publicacionObjId = new Types.ObjectId(publicacionId);
+        const autorObjId = new Types.ObjectId(autorId);
 
-        try {
-            await this.likeModel.create({ publicacion: publicacionObjId, usuario: autorObjId });
+        try {
+            await this.likeModel.create({ publicacion: publicacionObjId, usuario: autorObjId });
 
-            const publicacionActualizada = await this.publicacionModel.findByIdAndUpdate(
-                publicacionId, { $inc: { cantidadLikes: 1 } }, { new: true } 
-            ).exec();
+            const publicacionActualizada = await this.publicacionModel.findByIdAndUpdate(
+                publicacionId, { $inc: { cantidadLikes: 1 } }, { new: true }
+            ).exec();
 
-            if (!publicacionActualizada) {
-                await this.likeModel.deleteOne({ publicacion: publicacionObjId, usuario: autorObjId }).exec();
-                throw new NotFoundException('Publicación no encontrada.');
-            }
+            if (!publicacionActualizada) {
+                await this.likeModel.deleteOne({ publicacion: publicacionObjId, usuario: autorObjId }).exec();
+                throw new NotFoundException('Publicación no encontrada.');
+            }
 
-            return { mensaje: 'Me Gusta añadido.', cantidadLikes: publicacionActualizada.cantidadLikes };
-        } catch (error) {
-            if (error.code === 11000) {
+            return { mensaje: 'Me Gusta añadido.', cantidadLikes: publicacionActualizada.cantidadLikes };
+        } catch (error) {
+            if (error.code === 11000) {
                 console.warn(`Usuario ${autorId} intentó dar like a ${publicacionId} que ya tenía.`);
-                return { 
-                    mensaje: 'Me Gusta ya existente, acción ignorada.', 
-                    cantidadLikes: await this.publicacionModel.findById(publicacionId).select('cantidadLikes').exec().then(p => p?.cantidadLikes || 0) 
+                return {
+                    mensaje: 'Me Gusta ya existente, acción ignorada.',
+                    cantidadLikes: await this.publicacionModel.findById(publicacionId)
+                        .select('cantidadLikes').exec().then(p => p?.cantidadLikes || 0)
                 };
-            }
-            throw error; 
-        }
-    }
-    
-    // 5. QUITAR ME GUSTA (DELETE /like)
-    async quitarMeGusta(publicacionId: string, autorId: string): Promise<any> {
-        const resultado = await this.likeModel.deleteOne({ 
-            publicacion: new Types.ObjectId(publicacionId), 
-            usuario: new Types.ObjectId(autorId) 
-        }).exec();
+            }
+            throw error;
+        }
+    }
 
-        if (resultado.deletedCount === 0) {
-            throw new NotFoundException('El usuario no había dado "Me Gusta" a esta publicación.');
-        }
+    // 5. QUITAR ME GUSTA
+    async quitarMeGusta(publicacionId: string, autorId: string): Promise<any> {
+        const resultado = await this.likeModel.deleteOne({
+            publicacion: new Types.ObjectId(publicacionId),
+            usuario: new Types.ObjectId(autorId)
+        }).exec();
 
-        const publicacionActualizada = await this.publicacionModel.findByIdAndUpdate(
-            publicacionId, { $inc: { cantidadLikes: -1 } }, { new: true } 
-        ).exec();
+        if (resultado.deletedCount === 0) {
+            throw new NotFoundException('El usuario no había dado "Me Gusta" a esta publicación.');
+        }
 
-        if (!publicacionActualizada) {
-            throw new NotFoundException('Publicación no encontrada. El "Me Gusta" fue quitado.');
-        }
+        const publicacionActualizada = await this.publicacionModel.findByIdAndUpdate(
+            publicacionId, { $inc: { cantidadLikes: -1 } }, { new: true }
+        ).exec();
 
-        return { mensaje: 'Me Gusta quitado.', cantidadLikes: publicacionActualizada.cantidadLikes };
-    }
+        if (!publicacionActualizada) {
+            throw new NotFoundException('Publicación no encontrada. El "Me Gusta" fue quitado.');
+        }
+
+        return { mensaje: 'Me Gusta quitado.', cantidadLikes: publicacionActualizada.cantidadLikes };
+    }
 }
+
 
