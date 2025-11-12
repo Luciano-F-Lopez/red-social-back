@@ -59,22 +59,24 @@ export class UsuariosService {
     return nuevoUsuario.save();
   }
 
-
+  // Busca un usuario por correo o nombre de usuario (para login)
   async buscarUsuarioParaLogin(correoOrUsername: string): Promise<Usuario | null> {
     return this.usuarioModel.findOne({
       $or: [{ correo: correoOrUsername }, { username: correoOrUsername }],
     });
   }
-
+  // Valida que la contraseña tenga al menos una mayúscula, un número y 8 caracteres
   private validarPassword(password: string): boolean {
     const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
     return regex.test(password);
   }
 
+  // Devuelve todos los usuarios
   async obtenerUsuarios(): Promise<Usuario[]> {
     return this.usuarioModel.find();
   }
-
+  
+  // Busca un usuario por su ID
   async obtenerUsuarioPorId(id: string): Promise<Usuario | null> {
   return this.usuarioModel.findById(id).exec();
 }
