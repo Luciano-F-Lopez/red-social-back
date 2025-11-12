@@ -1,31 +1,34 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { CloudinaryService } from '../config/cloudinary.service'; 
+import { CloudinaryService } from '../config/cloudinary.service';
 import { Publicacion } from './schemas/publicacion.schema';
-import { Like } from './schemas/like.schema'; 
-import { Usuario } from '../usuarios/schemas/usuario.schema'; 
+import { Like } from './schemas/like.schema';
+import { Usuario } from '../usuarios/schemas/usuario.schema';
+import { Comentario } from './schemas/comentario.schema';
 
 @Injectable()
 export class PublicacionesService {
     constructor(
-        @InjectModel(Publicacion.name) private publicacionModel: Model<Publicacion>,
-        @InjectModel(Like.name) private likeModel: Model<Like>,
-        @InjectModel(Usuario.name) private usuarioModel: Model<Usuario>,
-        private readonly cloudinaryService: CloudinaryService, 
+        @InjectModel(Publicacion.name) private publicacionModel: Model<Publicacion>, // Modelo de publicaciones
+        @InjectModel(Like.name) private likeModel: Model<Like>,                      // Modelo de likes
+        @InjectModel(Usuario.name) private usuarioModel: Model<Usuario>,             // Modelo de usuarios
+        @InjectModel(Comentario.name) private comentarioModel: Model<Comentario>,    // Modelo de comentarios
+        private readonly cloudinaryService: CloudinaryService,                       // Servicio para subir imágenes
     ) {}
 
     // 1. CREAR PUBLICACIÓN
     async crearPublicacion(
-        titulo: string, 
-        descripcion: string, 
-        autorId: string, 
-        file?: Express.Multer.File 
+        titulo: string,
+        descripcion: string,
+        autorId: string,
+        file?: Express.Multer.File
     ): Promise<Publicacion> {
         if (!titulo || !autorId) {
             throw new BadRequestException('Título y autor son obligatorios.');
         }
 
+        // Subir imagen si existe
         let urlImagen: string | undefined;
         if (file) {
             try {
@@ -36,14 +39,15 @@ export class PublicacionesService {
             }
         }
 
+        // Crear nueva publicación en DB
         const nuevaPublicacion = new this.publicacionModel({
             titulo,
             descripcion,
             autor: new Types.ObjectId(autorId),
-            urlImagen, 
+            urlImagen,
         });
 
-        return nuevaPublicacion.save();
+        return nuevaPublicacion.save(); // Guardar y devolver
     }
 
     // 2. OBTENER PUBLICACIONES
@@ -54,30 +58,30 @@ export class PublicacionesService {
         usuarioId?: string
     ): Promise<{ publicaciones: any[], total: number }> {
 
-        const sortCriteria: any =
-            orderBy === 'likes' ? { cantidadLikes: -1 } : { createdAt: -1 };
-
+        const sortCriteria: any = orderBy === 'likes' ? { cantidadLikes: -1 } : { createdAt: -1 };
         const filter: any = { borradoLogico: false };
         if (usuarioId) filter.autor = new Types.ObjectId(usuarioId);
 
+        // Traer publicaciones y total
         const [publicaciones, total] = await Promise.all([
             this.publicacionModel
                 .find(filter)
                 .sort(sortCriteria)
                 .skip(offset)
                 .limit(limit)
-                .populate('autor', 'username nombre fotoPerfil') 
+                .populate('autor', 'username nombre fotoPerfil') // Traer datos del autor
                 .lean(),
             this.publicacionModel.countDocuments(filter),
         ]);
 
-        // Traer los likes de cada publicación
+        // Traer likes de cada publicación
         const pubIds = publicaciones.map(p => p._id);
         const likes = await this.likeModel
             .find({ publicacion: { $in: pubIds } })
             .select('usuario publicacion')
             .lean();
 
+        // Mapear likes por publicación
         const likesMap: Record<string, string[]> = {};
         for (const l of likes) {
             const pubId = l.publicacion.toString();
@@ -86,6 +90,7 @@ export class PublicacionesService {
             likesMap[pubId].push(userId);
         }
 
+        // Añadir likes a las publicaciones
         const publicacionesConLikes = publicaciones.map(pub => ({
             ...pub,
             likes: likesMap[pub._id.toString()] || [],
@@ -94,7 +99,7 @@ export class PublicacionesService {
         return { publicaciones: publicacionesConLikes, total };
     }
 
-    // 3. ELIMINACIÓN LÓGICA
+    // 3. ELIMINAR PUBLICACIÓN (borrado lógico)
     async eliminarPublicacion(publicacionId: string, usuarioPeticionId: string): Promise<Publicacion> {
         const publicacion = await this.publicacionModel.findById(publicacionId).exec();
 
@@ -107,7 +112,7 @@ export class PublicacionesService {
         }
 
         publicacion.borradoLogico = true;
-        return publicacion.save();
+        return publicacion.save(); // Guardar cambio
     }
 
     // 4. DAR ME GUSTA
@@ -116,8 +121,10 @@ export class PublicacionesService {
         const autorObjId = new Types.ObjectId(autorId);
 
         try {
+            // Crear like en DB
             await this.likeModel.create({ publicacion: publicacionObjId, usuario: autorObjId });
 
+            // Incrementar contador en la publicación
             const publicacionActualizada = await this.publicacionModel.findByIdAndUpdate(
                 publicacionId, { $inc: { cantidadLikes: 1 } }, { new: true }
             ).exec();
@@ -129,15 +136,13 @@ export class PublicacionesService {
 
             return { mensaje: 'Me Gusta añadido.', cantidadLikes: publicacionActualizada.cantidadLikes };
         } catch (error) {
+            // Evitar duplicados
             if (error.code === 11000) {
                 const cantidadLikes = await this.publicacionModel.findById(publicacionId)
                     .select('cantidadLikes').exec()
                     .then(p => p?.cantidadLikes || 0);
 
-                return { 
-                    mensaje: 'Me Gusta ya existente, acción ignorada.', 
-                    cantidadLikes
-                };
+                return { mensaje: 'Me Gusta ya existente, acción ignorada.', cantidadLikes };
             }
             throw error;
         }
@@ -164,6 +169,32 @@ export class PublicacionesService {
 
         return { mensaje: 'Me Gusta quitado.', cantidadLikes: publicacionActualizada.cantidadLikes };
     }
+
+    // 6. AGREGAR COMENTARIO
+    async agregarComentario(publicacionId: string, autorId: string, texto: string): Promise<Comentario> {
+        const publicacion = await this.publicacionModel.findById(publicacionId);
+        if (!publicacion) throw new NotFoundException('Publicación no encontrada');
+
+        const comentario = new this.comentarioModel({
+            publicacion: new Types.ObjectId(publicacionId),
+            autor: new Types.ObjectId(autorId),
+            texto,
+        });
+
+        return comentario.save(); // Guardar comentario en DB
+    }
+
+    // 7. OBTENER COMENTARIOS
+    async obtenerComentarios(publicacionId: string): Promise<Comentario[]> {
+        return this.comentarioModel
+            .find({ publicacion: new Types.ObjectId(publicacionId) }) // Filtrar por publicación
+            .populate('autor', 'username nombre fotoPerfil')          // Traer info del autor
+            .sort({ createdAt: 1 })                                   // Orden cronológico
+            .lean();                                                  // Devolver objeto simple
+    }
 }
+
+
+
 
 

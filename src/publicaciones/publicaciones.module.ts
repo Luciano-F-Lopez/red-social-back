@@ -5,6 +5,7 @@ import { PublicacionesService } from './publicaciones.service';
 import { Publicacion, PublicacionSchema } from './schemas/publicacion.schema';
 import { Like, LikeSchema } from './schemas/like.schema'; 
 import { Usuario, UsuarioSchema } from '../usuarios/schemas/usuario.schema';
+import { Comentario, ComentarioSchema } from './schemas/comentario.schema'; 
 import { CloudinaryModule } from '../config/cloudinary.module'; 
 
 @Module({
@@ -14,10 +15,12 @@ import { CloudinaryModule } from '../config/cloudinary.module';
       { name: Publicacion.name, schema: PublicacionSchema },
       { name: Like.name, schema: LikeSchema },
       { name: Usuario.name, schema: UsuarioSchema }, 
+      { name: Comentario.name, schema: ComentarioSchema }, 
     ]),
   ],
   controllers: [PublicacionesController],
   providers: [PublicacionesService], 
 })
 export class PublicacionesModule {}
+
 

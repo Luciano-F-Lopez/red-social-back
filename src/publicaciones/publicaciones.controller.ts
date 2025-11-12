@@ -1,6 +1,6 @@
 import { 
     Controller, Post, Body, Get, BadRequestException, 
-    UseInterceptors, UploadedFile, Query, Param, Delete, 
+    UseInterceptors, UploadedFile, Query, Param, Delete 
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PublicacionesService } from './publicaciones.service';
@@ -9,30 +9,21 @@ import { PublicacionesService } from './publicaciones.service';
 export class PublicacionesController {
     constructor(private readonly publicacionesService: PublicacionesService) {}
 
-    // POST: Crear Publicación con imagen
+    // Crear publicación con imagen (opcional)
     @Post()
     @UseInterceptors(FileInterceptor('imagen')) 
     async crear(
         @UploadedFile() file: Express.Multer.File, 
         @Body() body: any 
     ) {
-        try {
-            const { titulo, descripcion, autorId } = body; 
-            
-            if (!titulo || !autorId || !descripcion) {
-                throw new BadRequestException('Faltan campos obligatorios: título, descripción y autorId.');
-            }
-
-            // El servicio maneja Cloudinary y Mongoose
-            return await this.publicacionesService.crearPublicacion(titulo, descripcion, autorId, file);
-            
-        } catch (error) {
-            // Maneja errores específicos como la subida a Cloudinary
-            throw new BadRequestException(`Error al crear la publicación: ${error.message}`);
+        const { titulo, descripcion, autorId } = body; 
+        if (!titulo || !autorId || !descripcion) {
+            throw new BadRequestException('Faltan campos obligatorios: título, descripción y autorId.');
         }
+        return await this.publicacionesService.crearPublicacion(titulo, descripcion, autorId, file);
     }
 
-    // GET: Listar Publicaciones con paginación
+    // Listar publicaciones con paginación y opción de ordenar por fecha o likes
     @Get()
     async listar(
         @Query('limit') limit: number = 10,
@@ -45,7 +36,7 @@ export class PublicacionesController {
         );
     }
     
-    // POST: Dar Me Gusta
+    // Dar Me Gusta a una publicación
     @Post(':id/like')
     async darMeGusta(
         @Param('id') publicacionId: string,
@@ -57,7 +48,7 @@ export class PublicacionesController {
         return await this.publicacionesService.darMeGusta(publicacionId, autorId);
     }
 
-    // DELETE: Quitar Me Gusta
+    // Quitar Me Gusta de una publicación
     @Delete(':id/like')
     async quitarMeGusta(
         @Param('id') publicacionId: string,
@@ -69,7 +60,7 @@ export class PublicacionesController {
         return await this.publicacionesService.quitarMeGusta(publicacionId, autorId);
     }
 
-    // DELETE: Baja Lógica de una publicación
+    // Eliminación lógica de una publicación
     @Delete(':id')
     async eliminarPublicacion(
         @Param('id') publicacionId: string,
@@ -80,5 +71,26 @@ export class PublicacionesController {
         }
         return await this.publicacionesService.eliminarPublicacion(publicacionId, usuarioPeticionId);
     }
+
+    // Agregar comentario a una publicación
+    @Post(':id/comentarios')
+    async agregarComentario(
+        @Param('id') publicacionId: string,
+        @Body() body: { autorId: string; texto: string }
+    ) {
+        const { autorId, texto } = body;
+        if (!autorId || !texto) {
+            throw new BadRequestException('Se requiere autorId y texto del comentario.');
+        }
+        return this.publicacionesService.agregarComentario(publicacionId, autorId, texto);
+    }
+
+    // Obtener todos los comentarios de una publicación
+    @Get(':id/comentarios')
+    async obtenerComentarios(@Param('id') publicacionId: string) {
+        return this.publicacionesService.obtenerComentarios(publicacionId);
+    }
 }
+
+
 
