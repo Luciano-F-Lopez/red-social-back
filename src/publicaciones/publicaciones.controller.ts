@@ -1,6 +1,6 @@
 import { 
     Controller, Post, Body, Get, BadRequestException, 
-    UseInterceptors, UploadedFile, Query, Param, Delete 
+    UseInterceptors, UploadedFile, Query, Param, Delete,Put
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PublicacionesService } from './publicaciones.service';
@@ -85,10 +85,40 @@ export class PublicacionesController {
         return this.publicacionesService.agregarComentario(publicacionId, autorId, texto);
     }
 
-    // Obtener todos los comentarios de una publicación
+    // Obtener comentarios paginados
     @Get(':id/comentarios')
-    async obtenerComentarios(@Param('id') publicacionId: string) {
-        return this.publicacionesService.obtenerComentarios(publicacionId);
+    async obtenerComentarios(
+        @Param('id') publicacionId: string,
+        @Query('limit') limit: number = 5,
+        @Query('offset') offset: number = 0
+    ) {
+        return this.publicacionesService.obtenerComentarios(
+            publicacionId,
+            Number(limit),
+            Number(offset)
+        );
+    }
+
+    // Editar comentario
+    @Put('comentarios/:comentarioId')
+    async editarComentario(
+        @Param('comentarioId') comentarioId: string,
+        @Body() body: { autorId: string; texto: string }
+    ) {
+        const { autorId, texto } = body;
+        if (!autorId || !texto) {
+            throw new BadRequestException('autorId y texto son obligatorios');
+        }
+
+        return this.publicacionesService.editarComentario(comentarioId, autorId, texto);
+    }
+
+    @Delete('comentarios/:comentarioId')
+    async eliminarComentario(
+    @Param('comentarioId') comentarioId: string,
+    @Body('autorId') autorId: string,
+    ) {
+    return this.publicacionesService.eliminarComentario(comentarioId, autorId);
     }
 }
 

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException,ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CloudinaryService } from '../config/cloudinary.service';
@@ -184,14 +184,57 @@ export class PublicacionesService {
         return comentario.save(); // Guardar comentario en DB
     }
 
-    // 7. OBTENER COMENTARIOS
-    async obtenerComentarios(publicacionId: string): Promise<Comentario[]> {
+    // 7. OBTENER COMENTARIOS con paginación
+    async obtenerComentarios(
+        publicacionId: string,
+        limit: number = 5,
+        offset: number = 0
+    ) {
         return this.comentarioModel
-            .find({ publicacion: new Types.ObjectId(publicacionId) }) // Filtrar por publicación
-            .populate('autor', 'username nombre fotoPerfil')          // Traer info del autor
-            .sort({ createdAt: 1 })                                   // Orden cronológico
-            .lean();                                                  // Devolver objeto simple
+            .find({ publicacion: new Types.ObjectId(publicacionId) })
+            .populate('autor', 'username nombre fotoPerfil')
+            .sort({ createdAt: -1 })              // más recientes primero
+            .skip(offset)
+            .limit(limit)
+            .lean();
     }
+
+    // 8. EDITAR COMENTARIO
+    async editarComentario(
+        comentarioId: string,
+        autorId: string,
+        nuevoTexto: string
+    ) {
+        const comentario = await this.comentarioModel.findById(comentarioId);
+
+        if (!comentario) throw new NotFoundException('Comentario no encontrado');
+
+        if (comentario.autor.toString() !== autorId) {
+            throw new BadRequestException('No puedes editar comentarios de otro usuario');
+        }
+
+        comentario.texto = nuevoTexto;
+        comentario.modificado = true; // <<<<<<<< marcar como editado
+
+        return comentario.save();
+    }
+
+    async eliminarComentario(comentarioId: string, autorId: string) {
+    const comentario = await this.comentarioModel.findById(comentarioId);
+
+    if (!comentario) {
+        throw new NotFoundException('Comentario no encontrado');
+    }
+
+    if (comentario.autor.toString() !== autorId) {
+        throw new ForbiddenException('No tienes permiso para eliminar este comentario');
+    }
+
+    await this.comentarioModel.findByIdAndDelete(comentarioId);
+
+    return { mensaje: 'Comentario eliminado correctamente' };
+    }
+
 }
 
 

@@ -14,6 +14,9 @@ export class Comentario {
 
   @Prop({ type: Types.ObjectId, ref: 'Publicacion', required: true })
   publicacion: Types.ObjectId;
+
+  @Prop({ type: Boolean, default: false })
+  modificado: boolean;
 }
 
 export const ComentarioSchema = SchemaFactory.createForClass(Comentario);
