@@ -1,54 +1,56 @@
-import { Controller, Post, Body, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException, UseInterceptors, UploadedFile, Headers, UnauthorizedException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer'; 
+import { memoryStorage } from 'multer';
 import { AuthService } from './auth.service';
-import { CloudinaryService } from '../config/cloudinary.service'; 
+import { CloudinaryService } from '../config/cloudinary.service';
 
-@Controller('auth') 
+@Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly cloudinaryService: CloudinaryService 
-) {}
+    private readonly cloudinaryService: CloudinaryService
+  ) {}
 
   @Post('registro')
-  @UseInterceptors(FileInterceptor('imagenPerfil', { // Esperar un archivo en el campo imagenPerfil del formulario
-    storage: memoryStorage(),  
-  }))
+  @UseInterceptors(FileInterceptor('imagenPerfil', { storage: memoryStorage() }))
   async registro(@Body() body: any, @UploadedFile() file: Express.Multer.File) {
-     try {
-        let imageUrl: string | null = null;
-        
-          if (file) {
-              const uploadResult = await this.cloudinaryService.uploadImage(file); // llama a cloudinaryService para subir la imagen a la nube
-            imageUrl = uploadResult.secure_url; // la secure_url que devuelve Cloudinary y la asigna al objeto body
-              body.imagenPerfil = imageUrl;   // guarda la url en la bd
-          } else {
-             body.imagenPerfil = null; 
-        }
-
-        
-        return await this.authService.register(body);
-
-      } catch (error) {
-        console.error('Error durante el registro o subida a Cloudinary:', error);
-        throw new BadRequestException(`Error al registrar usuario: ${error.message}`);
-      }
-   }
-
-   @Post('login')
-   async login(@Body() body: any) {
-      const correoOrUsername = body.correoOrUsername;
-      const password = body.password || body.contrasena;
-
-   if (!correoOrUsername || !password) {
-        throw new BadRequestException('Faltan campos obligatorios');
+    try {
+      if (file) {
+        const upload = await this.cloudinaryService.uploadImage(file);
+        body.imagenPerfil = upload.secure_url;
       }
 
-      try {
-        return await this.authService.login(correoOrUsername, password);
-      } catch (error) {
-        throw new BadRequestException(error.message);
-      }
-   }
+      return await this.authService.register(body);
+
+    } catch (error) {
+      throw new BadRequestException(`Error al registrar usuario: ${error.message}`);
+    }
+  }
+
+  @Post('login')
+  async login(@Body() body: any) {
+    const correoOrUsername = body.correoOrUsername;
+    const password = body.password || body.contrasena;
+
+    if (!correoOrUsername || !password) {
+      throw new BadRequestException('Faltan campos obligatorios');
+    }
+
+    return await this.authService.login(correoOrUsername, password);
+  }
+
+  @Post('autorizar')
+  autorizar(@Headers('authorization') auth: string) {
+    const token = auth?.replace('Bearer ', '');
+    if (!token) throw new UnauthorizedException('No enviaste token');
+    return this.authService.autorizar(token);
+  }
+
+  @Post('refrescar')
+  refrescar(@Headers('authorization') auth: string) {
+    const token = auth?.replace('Bearer ', '');
+    if (!token) throw new UnauthorizedException('No enviaste token');
+    return this.authService.refrescar(token);
+  }
 }
+

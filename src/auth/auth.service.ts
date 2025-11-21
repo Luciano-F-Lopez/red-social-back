@@ -1,23 +1,32 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { UsuariosService } from '../usuarios/usuarios.service'; 
-import { Usuario } from '../usuarios/schemas/usuario.schema';
+import { UsuariosService } from '../usuarios/usuarios.service';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private usuariosService: UsuariosService, 
+    private usuariosService: UsuariosService,
+    private jwtService: JwtService,
   ) {}
 
- 
-  async register(
-    userData: any, 
-  ): Promise<any> {
-    try {
-      const nuevoUsuario = await this.usuariosService.crearUsuario(userData);
+  private generarToken(usuario: any) {
+    return this.jwtService.sign({
+      sub: usuario._id,
+      perfil: usuario.perfil,
+    });
+  }
 
-      const { password: _, ...result } = nuevoUsuario.toObject(); //extrae la propiedad password y la descarta
-      return result; //asigna el resto de las propiedades a la variable result
+  async register(data: any): Promise<any> {
+    try {
+      const nuevoUsuario = await this.usuariosService.crearUsuario(data);
+
+      const { password, ...usuarioLimpio } = nuevoUsuario.toObject();
+
+      return {
+        token: this.generarToken(nuevoUsuario),
+        usuario: usuarioLimpio,
+      };
     } catch (error) {
       throw new BadRequestException(error.message);
     }
@@ -25,21 +34,48 @@ export class AuthService {
 
   async login(correoOrUsername: string, password: string): Promise<any> {
     const usuario = await this.usuariosService.buscarUsuarioParaLogin(correoOrUsername);
-    
+    console.log('Usuario encontrado raw:', usuario)
     if (!usuario) {
-      throw new BadRequestException('Credenciales incorrectas'); 
+      throw new UnauthorizedException('Credenciales incorrectas');
     }
 
-    const match = await bcrypt.compare(password, usuario.password); //Compara la password que el usuario ingresó con el hash almacenado en la base de datos
-    
+    const match = await bcrypt.compare(password, usuario.password);
+
     if (!match) {
-      throw new BadRequestException('Contraseña incorrecta');
+      throw new UnauthorizedException('Contraseña incorrecta');
     }
-    const usuarioLimpio: any = usuario.toJSON();
-    delete usuarioLimpio.password; 
+
+    const usuarioLimpio = usuario.toObject();
+    delete usuarioLimpio.password;
 
     return {
-      user: usuarioLimpio,
+      token: this.generarToken(usuario),
+      usuario: usuarioLimpio,
     };
   }
+
+  async autorizar(token: string) {
+    try {
+      const datos = this.jwtService.verify(token);
+      return this.usuariosService.obtenerUsuarioPorId(datos.sub);
+    } catch (e) {
+      throw new UnauthorizedException('Token inválido o vencido');
+    }
+  }
+
+  async refrescar(token: string) {
+    try {
+      const datos = this.jwtService.verify(token);
+
+      const usuario = await this.usuariosService.obtenerUsuarioPorId(datos.sub);
+      if (!usuario) throw new UnauthorizedException();
+
+      return {
+        token: this.generarToken(usuario),
+      };
+    } catch (e) {
+      throw new UnauthorizedException('No se pudo refrescar el token');
+    }
+  }
 }
+

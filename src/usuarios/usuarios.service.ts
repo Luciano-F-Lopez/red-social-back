@@ -61,10 +61,14 @@ export class UsuariosService {
 
   // Busca un usuario por correo o nombre de usuario (para login)
   async buscarUsuarioParaLogin(correoOrUsername: string): Promise<Usuario | null> {
-    return this.usuarioModel.findOne({
+  return this.usuarioModel
+    .findOne({
       $or: [{ correo: correoOrUsername }, { username: correoOrUsername }],
-    });
-  }
+    })
+    .exec();
+}
+
+
   // Valida que la contraseña tenga al menos una mayúscula, un número y 8 caracteres
   private validarPassword(password: string): boolean {
     const regex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
