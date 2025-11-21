@@ -90,14 +90,17 @@ export class PublicacionesController {
     async obtenerComentarios(
         @Param('id') publicacionId: string,
         @Query('limit') limit: number = 5,
-        @Query('offset') offset: number = 0
+        @Query('page') page: number = 1
     ) {
+        const offset = (Number(page) - 1) * Number(limit);
+        
         return this.publicacionesService.obtenerComentarios(
             publicacionId,
             Number(limit),
-            Number(offset)
+            offset
         );
     }
+
 
     // Editar comentario
     @Put('comentarios/:comentarioId')

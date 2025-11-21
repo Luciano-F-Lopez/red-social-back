@@ -190,14 +190,23 @@ export class PublicacionesService {
         limit: number = 5,
         offset: number = 0
     ) {
-        return this.comentarioModel
-            .find({ publicacion: new Types.ObjectId(publicacionId) })
-            .populate('autor', 'username nombre fotoPerfil')
-            .sort({ createdAt: -1 })              // más recientes primero
-            .skip(offset)
-            .limit(limit)
-            .lean();
+        const [comentarios, total] = await Promise.all([
+            this.comentarioModel
+                .find({ publicacion: new Types.ObjectId(publicacionId) })
+                .populate('autor', 'username nombre fotoPerfil')
+                .sort({ createdAt: -1 })  // más recientes primero
+                .skip(offset)
+                .limit(limit)
+                .lean(),
+
+            this.comentarioModel.countDocuments({
+                publicacion: new Types.ObjectId(publicacionId)
+            })
+        ]);
+
+        return { comentarios, total };
     }
+
 
     // 8. EDITAR COMENTARIO
     async editarComentario(
