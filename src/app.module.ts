@@ -5,6 +5,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
 import { PublicacionesModule } from './publicaciones/publicaciones.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
+import { EstadisticasModule } from './estadisticas/estadisticas.module';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -14,6 +15,7 @@ dotenv.config();
     PublicacionesModule,
     MongooseModule.forRoot(process.env.MONGO_URI as string),
     AuthModule,
+    EstadisticasModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -18,6 +18,8 @@ export class UsuariosService {
     const fechaNacimiento = data.get ? data.get('fechaNacimiento') : data.fechaNacimiento;
     const descripcion = data.get ? data.get('descripcion') : data.descripcion;
     const imagenPerfil = data.get ? data.get('imagenPerfil') : data.imagenPerfil;
+    const perfil = data.get ? data.get('perfil') : data.perfil;
+
 
     // Validación de contraseña
     if (!this.validarPassword(password)) {
@@ -43,6 +45,9 @@ export class UsuariosService {
     const salt = await bcrypt.genSalt();  // Crea una cadena aleatoria de datos
     const hash = await bcrypt.hash(password, salt); // Cifra la contraseña mezclada
 
+    // Determinar perfil final
+    const perfilFinal = perfil === 'admin' ? 'admin' : 'usuario';
+
     // Crear y guardar
     const nuevoUsuario = new this.usuarioModel({
       nombre,
@@ -53,7 +58,8 @@ export class UsuariosService {
       fechaNacimiento,
       descripcion,
       imagenPerfil,
-      perfil: 'usuario',
+      perfil: perfilFinal,
+      activo: true,
     });
 
     return nuevoUsuario.save();
@@ -83,6 +89,28 @@ export class UsuariosService {
   // Busca un usuario por su ID
   async obtenerUsuarioPorId(id: string): Promise<Usuario | null> {
   return this.usuarioModel.findById(id).exec();
+}
+
+// Deshabilitar usuario
+async deshabilitarUsuario(id: string): Promise<Usuario> {
+  const usuario = await this.usuarioModel.findByIdAndUpdate(
+    id,
+    { activo: false },
+    { new: true }
+  );
+  if (!usuario) throw new BadRequestException("Usuario no encontrado");
+  return usuario;
+}
+
+// Habilitar usuario
+async habilitarUsuario(id: string): Promise<Usuario> {
+  const usuario = await this.usuarioModel.findByIdAndUpdate(
+    id,
+    { activo: true },
+    { new: true }
+  );
+  if (!usuario) throw new BadRequestException("Usuario no encontrado");
+  return usuario;
 }
 
   

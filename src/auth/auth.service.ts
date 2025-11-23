@@ -39,6 +39,12 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
 
+    if (!usuario.activo) {
+    throw new UnauthorizedException(
+      'Tu usuario está deshabilitado. Contacta al administrador.'
+    );
+  }
+
     const match = await bcrypt.compare(password, usuario.password);
 
     if (!match) {
