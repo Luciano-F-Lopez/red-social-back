@@ -6,14 +6,14 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
-  @UseGuards(AdminGuard)
+  
   @Get()
   async obtenerUsuarios() {
     return this.usuariosService.obtenerUsuarios();
   }
 
   // Solo admin puede ver usuario por ID
-  @UseGuards(AdminGuard)
+  
   @Get(':id')
   async obtenerUsuarioPorId(@Param('id') id: string) {
     const usuario = await this.usuariosService.obtenerUsuarioPorId(id);
