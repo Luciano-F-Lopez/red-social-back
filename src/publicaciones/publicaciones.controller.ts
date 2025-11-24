@@ -64,12 +64,13 @@ export class PublicacionesController {
     @Delete(':id')
     async eliminarPublicacion(
         @Param('id') publicacionId: string,
-        @Body('usuarioPeticionId') usuarioPeticionId: string 
+        @Body('usuarioPeticionId') usuarioPeticionId: string,
+        @Body('perfil') perfil: string  
     ) {
         if (!usuarioPeticionId) {
              throw new BadRequestException('Se requiere el ID del usuario para eliminar.');
         }
-        return await this.publicacionesService.eliminarPublicacion(publicacionId, usuarioPeticionId);
+        return await this.publicacionesService.eliminarPublicacion(publicacionId, usuarioPeticionId,perfil);
     }
 
     // Agregar comentario a una publicación

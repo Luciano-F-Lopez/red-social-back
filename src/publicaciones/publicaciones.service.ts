@@ -100,16 +100,16 @@ export class PublicacionesService {
     }
 
     // 3. ELIMINAR PUBLICACIÓN (borrado lógico)
-    async eliminarPublicacion(publicacionId: string, usuarioPeticionId: string): Promise<Publicacion> {
+    async eliminarPublicacion(publicacionId: string, usuarioPeticionId: string, perfil: string): Promise<Publicacion> {
         const publicacion = await this.publicacionModel.findById(publicacionId).exec();
 
         if (!publicacion || publicacion.borradoLogico) {
             throw new NotFoundException('Publicación no encontrada.');
         }
 
-        if (publicacion.autor.toString() !== usuarioPeticionId) {
-            throw new BadRequestException('No tienes permiso para eliminar esta publicación.');
-        }
+        if (publicacion.autor.toString() !== usuarioPeticionId && perfil !== 'admin') {
+        throw new BadRequestException('No tienes permiso para eliminar esta publicación.');
+    }
 
         publicacion.borradoLogico = true;
         return publicacion.save(); // Guardar cambio
