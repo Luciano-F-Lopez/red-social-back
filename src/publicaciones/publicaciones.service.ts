@@ -99,6 +99,15 @@ export class PublicacionesService {
         return { publicaciones: publicacionesConLikes, total };
     }
 
+    async obtenerPublicacionPorId(publicacionId: string): Promise<Publicacion | null> {
+    return this.publicacionModel
+        .findById(publicacionId)
+        .populate('autor', 'username') 
+        .exec();
+    }
+
+
+
     // 3. ELIMINAR PUBLICACIÓN (borrado lógico)
     async eliminarPublicacion(publicacionId: string, usuarioPeticionId: string, perfil: string): Promise<Publicacion> {
         const publicacion = await this.publicacionModel.findById(publicacionId).exec();

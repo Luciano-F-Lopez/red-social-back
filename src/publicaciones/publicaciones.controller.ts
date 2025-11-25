@@ -1,5 +1,5 @@
 import { 
-    Controller, Post, Body, Get, BadRequestException, 
+    Controller, Post, Body, Get, BadRequestException,NotFoundException, 
     UseInterceptors, UploadedFile, Query, Param, Delete,Put
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -35,6 +35,17 @@ export class PublicacionesController {
             Number(limit), Number(offset), orderBy, usuarioId
         );
     }
+
+    // Obtener publicación por ID
+    @Get(':id')
+    async obtenerPorId(@Param('id') publicacionId: string) {
+        const publicacion = await this.publicacionesService.obtenerPublicacionPorId(publicacionId);
+        if (!publicacion) {
+            throw new NotFoundException('Publicación no encontrada');
+        }
+        return publicacion;
+    }
+
     
     // Dar Me Gusta a una publicación
     @Post(':id/like')
