@@ -232,7 +232,7 @@ export class PublicacionesService {
         }
 
         comentario.texto = nuevoTexto;
-        comentario.modificado = true; // <<<<<<<< marcar como editado
+        comentario.modificado = true; //  marcar como editado
 
         return comentario.save();
     }

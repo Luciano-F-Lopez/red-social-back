@@ -1,7 +1,4 @@
-import { 
-    Controller, Post, Body, Get, BadRequestException,NotFoundException, 
-    UseInterceptors, UploadedFile, Query, Param, Delete,Put
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, BadRequestException,NotFoundException, UseInterceptors, UploadedFile, Query, Param, Delete,Put} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PublicacionesService } from './publicaciones.service';
 
